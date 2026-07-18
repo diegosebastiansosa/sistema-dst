@@ -1,0 +1,14 @@
+# Base de datos con datos de prueba - cada usuario genera la suya al abrir la app
+dst.db
+
+# Carpetas que genera PyInstaller al compilar (se regeneran con el comando, no hace falta versionarlas)
+build/
+dist/
+*.spec
+
+# Archivos de Python compilados
+__pycache__/
+*.pyc
+
+# Carpeta de configuración de VSCode (opcional - algunos prefieren compartirla, otros no)
+.vscode/

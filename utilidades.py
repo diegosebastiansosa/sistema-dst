@@ -76,6 +76,43 @@ def obtener_metricas_dashboard():
         
     return metricas
 
+def obtener_ganancias_mensuales(anio, mes):
+    """Calcula ingresos entregados y prestaciones menos costo de insumos para un mes."""
+    periodo = f"{anio:04d}-{mes:02d}"
+    conexion = conectar_db()
+    try:
+        cursor = conexion.cursor()
+        cursor.execute("""
+            SELECT
+                (
+                    SELECT COALESCE(SUM(presupuesto), 0)
+                    FROM ordenes
+                    WHERE estado = 'Entregado' AND substr(fecha, 1, 7) = ?
+                ) AS ordenes_entregadas,
+                (
+                    SELECT COALESCE(SUM(ganancia), 0)
+                    FROM prestaciones
+                    WHERE activo = 1 AND substr(fecha, 1, 7) = ?
+                ) AS prestaciones,
+                (
+                    SELECT COALESCE(SUM(unidades * costo), 0)
+                    FROM insumos
+                    WHERE activo = 1 AND substr(fecha, 1, 7) = ?
+                ) AS costo_insumos
+        """, (periodo, periodo, periodo))
+        resultado = cursor.fetchone()
+        ganancias_ordenes = resultado["ordenes_entregadas"]
+        ganancias_prestaciones = resultado["prestaciones"]
+        costo_insumos = resultado["costo_insumos"]
+        return {
+            "ordenes_entregadas": ganancias_ordenes,
+            "prestaciones": ganancias_prestaciones,
+            "costo_insumos": costo_insumos,
+            "ganancia_neta": ganancias_ordenes + ganancias_prestaciones - costo_insumos,
+        }
+    finally:
+        conexion.close()
+
 # --- CONEXIÓN CENTRALIZADA ---
 def conectar_db():
     """Función única para conectarse a la base de datos dst.db"""

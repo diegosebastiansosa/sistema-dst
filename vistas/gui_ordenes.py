@@ -36,10 +36,15 @@ class PantallaOrdenes(QWidget):
     Clase que representa la pantalla de Gestión de Órdenes.
     Hereda de QWidget para funcionar como un contenedor visual independiente.
     """
-    def __init__(self, ventana_principal):
+    def __init__(self, ventana_principal, actualizar_dashboard=None):
         super().__init__()
         self.ventana_principal = ventana_principal  # Guardamos referencia para cuadros de diálogo
+        self.actualizar_dashboard = actualizar_dashboard
         self.init_ui()
+
+    def _notificar_cambio_datos(self):
+        if self.actualizar_dashboard is not None:
+            self.actualizar_dashboard()
 
     def init_ui(self):
         # ---- PANTALLA 3: Órdenes ----
@@ -333,6 +338,7 @@ class PantallaOrdenes(QWidget):
             mostrar_mensaje(dialogo, QMessageBox.Information, "Éxito", "¡La orden de reparación se ha registrado correctamente!")
             dialogo.accept()
             self.cargar_ordenes()
+            self._notificar_cambio_datos()
                 
         # Conectamos el click del botón a nuestra función procesadora
         btn_guardar.clicked.connect(procesar_alta_orden)
@@ -436,6 +442,7 @@ class PantallaOrdenes(QWidget):
             mostrar_mensaje(dialogo, QMessageBox.Information, "Éxito", "¡Los datos de la orden se actualizaron correctamente!")
             dialogo.accept()
             self.cargar_ordenes()
+            self._notificar_cambio_datos()
                 
         # Conectamos el botón de guardar con la lógica del procesador
         btn_guardar.clicked.connect(procesar_edicion_estado)
@@ -459,3 +466,4 @@ class PantallaOrdenes(QWidget):
 
             mostrar_mensaje(self.ventana_principal, QMessageBox.Information, "Éxito", f"La Orden Nº {id_orden} fue cancelada correctamente.")  # CORRECCIÓN: Information
             self.cargar_ordenes()
+            self._notificar_cambio_datos()

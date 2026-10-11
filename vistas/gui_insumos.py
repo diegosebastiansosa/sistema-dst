@@ -16,10 +16,15 @@ from vistas.estilos import (
 
 
 class PantallaInsumos(QWidget):
-    def __init__(self, ventana_principal):
+    def __init__(self, ventana_principal, actualizar_dashboard=None):
         super().__init__()
         self.ventana_principal = ventana_principal
+        self.actualizar_dashboard = actualizar_dashboard
         self.init_ui()
+
+    def _notificar_cambio_datos(self):
+        if self.actualizar_dashboard is not None:
+            self.actualizar_dashboard()
 
     def init_ui(self):
         layout = QVBoxLayout(self)
@@ -157,6 +162,7 @@ class PantallaInsumos(QWidget):
                 f"El insumo '{descripcion}' fue dado de baja.",
             )
             self.cargar_insumos()
+            self._notificar_cambio_datos()
         else:
             mostrar_mensaje(
                 self.ventana_principal,
@@ -234,6 +240,7 @@ class PantallaInsumos(QWidget):
             mostrar_mensaje(dialogo, QMessageBox.Information, "Éxito", "El insumo se guardó correctamente.")
             dialogo.accept()
             self.cargar_insumos()
+            self._notificar_cambio_datos()
 
         boton.clicked.connect(procesar_alta)
         dialogo.exec()
@@ -265,6 +272,7 @@ class PantallaInsumos(QWidget):
             mostrar_mensaje(dialogo, QMessageBox.Information, "Éxito", "Los datos del insumo se actualizaron.")
             dialogo.accept()
             self.cargar_insumos()
+            self._notificar_cambio_datos()
 
         boton.clicked.connect(procesar_edicion)
         dialogo.exec()

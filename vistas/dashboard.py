@@ -10,9 +10,14 @@
 #       └── actualizar_metricas() → refresca los números y gráficos con datos de la BD
 # =============================================================================
 
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QFrame
-from PySide6.QtCore import Qt
-from PySide6.QtCharts import QChart, QChartView, QPieSeries, QBarSet, QBarSeries, QBarCategoryAxis, QValueAxis
+from PySide6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QToolButton,
+)
+from PySide6.QtCore import Qt, QDate, QSize
+from PySide6.QtCharts import (
+    QChart, QChartView, QPieSeries, QBarSet, QBarSeries,
+    QBarCategoryAxis, QValueAxis,
+)
 from PySide6.QtGui import QPainter, QColor
 import utilidades # Importamos las utilidades para consultar la BD directamente
 
@@ -29,8 +34,8 @@ from qfluentwidgets import (
 
 # Importamos la paleta centralizada. Se define una sola vez en vistas/estilos.py.
 from vistas.estilos import (
-    COLOR_SIDEBAR, COLOR_FONDO_CONTENIDO, COLOR_ACENTO,
-    COLOR_TEXTO_PRINCIPAL, COLOR_TEXTO_SECUNDARIO
+    COLOR_SIDEBAR, COLOR_ACENTO,
+    COLOR_TEXTO_PRINCIPAL, COLOR_TEXTO_SECUNDARIO,
 )
 
 
@@ -45,8 +50,7 @@ class PantallaDashboard(QWidget):
         self.init_ui()
 
     def init_ui(self):
-        # Construye la interfaz visual de la pantalla de bienvenida.
-        # Muestra tarjetas de estadísticas y dos gráficos de reporte (torta y barras) sobre el estado de las órdenes de reparación.
+        # Construye la pantalla de bienvenida con estadísticas y reportes mensuales.
 
         # ---- Layout principal del Dashboard ----
         # Usamos QVBoxLayout para organizar los widgets de arriba hacia abajo.
@@ -65,10 +69,6 @@ class PantallaDashboard(QWidget):
         # acá también para asegurar buen contraste siempre.
         lbl_bienvenida.setStyleSheet(f"color: {COLOR_TEXTO_PRINCIPAL}; border: none; background: transparent;")
 
-        # Alineamos el texto al centro, tanto horizontal como verticalmente.
-        lbl_bienvenida.setAlignment(Qt.AlignCenter)
-
-        # Agregamos la etiqueta al layout para que aparezca en pantalla.
         lay_dashboard.addWidget(lbl_bienvenida)
 
         lbl_subtitulo = CaptionLabel("Estado general del taller de reparaciones:")
@@ -139,7 +139,7 @@ class PantallaDashboard(QWidget):
 
         lay_dashboard.addLayout(grid_tarjetas)
 
-        # --- SECCIÓN: Gráficos de Reporte (Distribución de Estados) ---
+        # --- SECCIÓN: Distribución de estados y ganancias mensuales ---
         lay_graficos = QHBoxLayout()
         lay_graficos.setSpacing(15)
 
@@ -152,20 +152,57 @@ class PantallaDashboard(QWidget):
 
         self.view_torta = QChartView(self.chart_torta)
         self.view_torta.setRenderHint(QPainter.Antialiasing)
-        self.view_torta.setMinimumHeight(350)
-        self.view_torta.setMaximumHeight(450)
+        self.view_torta.setMinimumHeight(300)
+        self.view_torta.setMaximumHeight(380)
 
-        # ==========================================
-        # CONFIGURACIÓN: Gráfico de Barras
-        # ==========================================
-        self.chart_barras = QChart()
-        self.chart_barras.setTitle("Volumen por Estado")
-        self.chart_barras.legend().setVisible(False)
+        self.mes_actual_ganancias = self._primer_dia_mes(QDate.currentDate())
+        self.mes_seleccionado_ganancias = self.mes_actual_ganancias
+        self.chart_ganancias = QChart()
+        self.chart_ganancias.legend().setAlignment(Qt.AlignBottom)
+        self.chart_ganancias.legend().setLabelColor(QColor(COLOR_TEXTO_SECUNDARIO))
+        self.view_ganancias = QChartView(self.chart_ganancias)
+        self.view_ganancias.setRenderHint(QPainter.Antialiasing)
+        self.view_ganancias.setMinimumHeight(210)
+        self.view_ganancias.setMaximumHeight(260)
 
-        self.view_barras = QChartView(self.chart_barras)
-        self.view_barras.setRenderHint(QPainter.Antialiasing)
-        self.view_barras.setMinimumHeight(350)
-        self.view_barras.setMaximumHeight(450)
+        card_ganancias = SimpleCardWidget()
+        lay_card_ganancias = QVBoxLayout(card_ganancias)
+        lay_card_ganancias.setContentsMargins(16, 14, 16, 12)
+        lay_card_ganancias.setSpacing(4)
+
+        fila_mes = QHBoxLayout()
+        self.btn_mes_anterior = QToolButton()
+        self.btn_mes_anterior.setIcon(FIF.LEFT_ARROW.icon(color=QColor(COLOR_SIDEBAR)))
+        self.btn_mes_anterior.setIconSize(QSize(16, 16))
+        self.btn_mes_anterior.setFixedSize(32, 32)
+        self.btn_mes_anterior.setToolTip("Mes anterior")
+        self.btn_mes_anterior.clicked.connect(lambda checked=False: self.cambiar_mes_ganancias(-1))
+        fila_mes.addWidget(self.btn_mes_anterior)
+
+        self.lbl_mes_ganancias = CaptionLabel()
+        self.lbl_mes_ganancias.setAlignment(Qt.AlignCenter)
+        self.lbl_mes_ganancias.setStyleSheet(
+            f"color: {COLOR_TEXTO_PRINCIPAL}; font-weight: bold;"
+        )
+        fila_mes.addWidget(self.lbl_mes_ganancias, 1)
+
+        self.btn_mes_siguiente = QToolButton()
+        self.btn_mes_siguiente.setIcon(FIF.RIGHT_ARROW.icon(color=QColor(COLOR_SIDEBAR)))
+        self.btn_mes_siguiente.setIconSize(QSize(16, 16))
+        self.btn_mes_siguiente.setFixedSize(32, 32)
+        self.btn_mes_siguiente.setToolTip("Mes siguiente")
+        self.btn_mes_siguiente.clicked.connect(lambda checked=False: self.cambiar_mes_ganancias(1))
+        fila_mes.addWidget(self.btn_mes_siguiente)
+        lay_card_ganancias.addLayout(fila_mes)
+
+        self.lbl_ganancia_neta = LargeTitleLabel("$ 0")
+        self.lbl_ganancia_neta.setAlignment(Qt.AlignCenter)
+        self.lbl_ganancia_neta.setStyleSheet(
+            "font-size: 28px; font-weight: bold; color: #16A34A; "
+            "border: none; background: transparent;"
+        )
+        lay_card_ganancias.addWidget(self.lbl_ganancia_neta)
+        lay_card_ganancias.addWidget(self.view_ganancias, 1)
 
         # Nota: los colores de fondo y bordes de estos gráficos se terminan
         # de aplicar en actualizar_metricas(), que se llama al final de este
@@ -181,14 +218,9 @@ class PantallaDashboard(QWidget):
         lay_card_torta.setContentsMargins(16, 16, 16, 16)
         lay_card_torta.addWidget(self.view_torta)
 
-        card_barras = SimpleCardWidget()
-        lay_card_barras = QVBoxLayout(card_barras)
-        lay_card_barras.setContentsMargins(16, 16, 16, 16)
-        lay_card_barras.addWidget(self.view_barras)
-
-        # Agregamos ambos al layout horizontal de gráficos
+        # El gráfico de volumen se reemplaza por el reporte mensual integrado.
         lay_graficos.addWidget(card_torta, 1)
-        lay_graficos.addWidget(card_barras, 1)
+        lay_graficos.addWidget(card_ganancias, 1)
 
         lay_dashboard.addLayout(lay_graficos)
 
@@ -204,6 +236,7 @@ class PantallaDashboard(QWidget):
         self.labels_valores["Órdenes Abiertas"].setText(str(datos["ordenes_abiertas"]))
         self.labels_valores["Órdenes Reparadas"].setText(str(datos["ordenes_reparadas"]))
         self.labels_valores["Órdenes Entregadas"].setText(str(datos["ordenes_entregadas"]))
+        self.actualizar_grafico_ganancias()
 
         # 2. Obtención de datos detallados por estado desde la BD
         estados_data = utilidades.obtener_estados_ordenes()
@@ -215,9 +248,8 @@ class PantallaDashboard(QWidget):
         color_texto_leyendas = QColor(COLOR_TEXTO_SECUNDARIO)
         borde_style = "border: none; background-color: white;"
 
-        # Aplicar estilos a los contenedores de los gráficos
+        # Aplicar estilos al gráfico de distribución
         self.view_torta.setStyleSheet(borde_style)
-        self.view_barras.setStyleSheet(borde_style)
 
         # Configurar Gráfico de Torta
         self.chart_torta.setBackgroundBrush(color_fondo_grafico)
@@ -225,12 +257,6 @@ class PantallaDashboard(QWidget):
         self.chart_torta.titleFont().setBold(True)
         #self.chart_torta.legend().setAlignment(Qt.AlignRight)
         self.chart_torta.legend().setLabelColor(color_texto_leyendas)
-
-        # Configurar Gráfico de Barras
-        self.chart_barras.setBackgroundBrush(color_fondo_grafico)
-        self.chart_barras.setTitleBrush(color_texto_titulo)
-        self.chart_barras.titleFont().setBold(True)
-        self.chart_barras.legend().setVisible(False)
 
         # Colores de las rebanadas de la torta, alineados con la paleta general.
         colores_estados = {
@@ -259,38 +285,86 @@ class PantallaDashboard(QWidget):
         
         self.chart_torta.addSeries(series_torta)
 
-        # --- RECONSTRUIR GRÁFICO DE BARRAS (Cantidades) ---
-        self.chart_barras.removeAllSeries()
-        
-        # Limpiamos ejes viejos
-        for axis in self.chart_barras.axes():
-            self.chart_barras.removeAxis(axis)
+        self.actualizar_grafico_ganancias()
 
-        set_barras = QBarSet("Órdenes")
-        # Usamos el violeta de marca (COLOR_ACENTO) en vez de un verde esmeralda suelto, para que las barras se sientan parte del mismo sistema visual que el resto de la app.
-        set_barras.setColor(QColor(COLOR_ACENTO))
-        
-        categorias = []
-        for estado, cantidad in estados_data.items():
-            set_barras.append(cantidad)
-            categorias.append(estado)
+    @staticmethod
+    def _primer_dia_mes(fecha):
+        return fecha.addDays(1 - fecha.day())
 
-        series_barras = QBarSeries()
-        series_barras.append(set_barras)
-        self.chart_barras.addSeries(series_barras)
+    def cambiar_mes_ganancias(self, cantidad):
+        nuevo_mes = self.mes_seleccionado_ganancias.addMonths(cantidad)
+        if nuevo_mes <= self.mes_actual_ganancias:
+            self.mes_seleccionado_ganancias = nuevo_mes
+            self.actualizar_grafico_ganancias()
 
-        # Eje X con color adaptativo
-        axis_x = QBarCategoryAxis()
-        axis_x.append(categorias)
-        axis_x.setLabelsColor(color_texto_leyendas) 
-        self.chart_barras.addAxis(axis_x, Qt.AlignBottom)
-        series_barras.attachAxis(axis_x)
+    def actualizar_grafico_ganancias(self):
+        nombres_meses = (
+            "enero", "febrero", "marzo", "abril", "mayo", "junio",
+            "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+        )
+        mes = self.mes_seleccionado_ganancias
+        self.lbl_mes_ganancias.setText(
+            f"{nombres_meses[mes.month() - 1].capitalize()} {mes.year()}"
+        )
+        self.btn_mes_siguiente.setEnabled(mes < self.mes_actual_ganancias)
 
-        # Eje Y con color adaptativo
-        max_valor = max(estados_data.values()) if estados_data.values() else 10
-        axis_y = QValueAxis()
-        axis_y.setRange(0, max_valor + 2)
-        axis_y.setLabelFormat("%d")
-        axis_y.setLabelsColor(color_texto_leyendas) 
-        self.chart_barras.addAxis(axis_y, Qt.AlignLeft)
-        series_barras.attachAxis(axis_y)
+        try:
+            ganancias = utilidades.obtener_ganancias_mensuales(mes.year(), mes.month())
+        except Exception as error:
+            print(f"Error al obtener ganancias mensuales: {error}")
+            ganancias = {
+                "ordenes_entregadas": 0,
+                "prestaciones": 0,
+                "costo_insumos": 0,
+                "ganancia_neta": 0,
+            }
+
+        neto = ganancias["ganancia_neta"]
+        self.lbl_ganancia_neta.setText(
+            "$ " + f"{neto:,.0f}".replace(",", ".")
+        )
+        color_neto = "#16A34A" if neto >= 0 else "#B91C1C"
+        self.lbl_ganancia_neta.setStyleSheet(
+            f"font-size: 28px; font-weight: bold; color: {color_neto}; "
+            "border: none; background: transparent;"
+        )
+
+        self.view_ganancias.setStyleSheet("border: none; background-color: white;")
+        self.chart_ganancias.removeAllSeries()
+        for eje in self.chart_ganancias.axes():
+            self.chart_ganancias.removeAxis(eje)
+        self.chart_ganancias.setBackgroundBrush(QColor("#FFFFFF"))
+        self.chart_ganancias.setTitleBrush(QColor(COLOR_TEXTO_PRINCIPAL))
+
+        componentes = (
+            ("Órdenes", ganancias["ordenes_entregadas"], "#4C6EF5"),
+            ("Prestaciones", ganancias["prestaciones"], "#14B8A6"),
+            ("Insumos", ganancias["costo_insumos"], "#EF4444"),
+            ("Neto", neto, "#22C55E" if neto >= 0 else "#B91C1C"),
+        )
+        serie = QBarSeries()
+        serie.setLabelsVisible(True)
+        serie.setLabelsFormat("$ @value")
+        for nombre, valor, color in componentes:
+            barra = QBarSet(nombre)
+            barra.setColor(QColor(color))
+            barra.append(valor)
+            serie.append(barra)
+        self.chart_ganancias.addSeries(serie)
+
+        eje_x = QBarCategoryAxis()
+        eje_x.append(["Mes seleccionado"])
+        eje_x.setLabelsColor(QColor(COLOR_TEXTO_SECUNDARIO))
+        self.chart_ganancias.addAxis(eje_x, Qt.AlignBottom)
+        serie.attachAxis(eje_x)
+
+        valores = [valor for _, valor, _ in componentes]
+        minimo = min(0, min(valores))
+        maximo = max(0, max(valores))
+        margen = max((maximo - minimo) * 0.15, 1)
+        eje_y = QValueAxis()
+        eje_y.setRange(minimo - margen if minimo < 0 else 0, maximo + margen)
+        eje_y.setLabelFormat("$ %d")
+        eje_y.setLabelsColor(QColor(COLOR_TEXTO_SECUNDARIO))
+        self.chart_ganancias.addAxis(eje_y, Qt.AlignLeft)
+        serie.attachAxis(eje_y)

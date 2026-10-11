@@ -41,10 +41,15 @@ from vistas.estilos import (
 class PantallaClientes(QWidget):
     # Clase que representa la pantalla de Gestión de Clientes.
     # Hereda de QWidget para funcionar como un contenedor visual independiente.
-    def __init__(self, ventana_principal):
+    def __init__(self, ventana_principal, actualizar_dashboard=None):
         super().__init__()
         self.ventana_principal = ventana_principal  # Guardamos referencia para cuadros de diálogo
+        self.actualizar_dashboard = actualizar_dashboard
         self.init_ui()
+
+    def _notificar_cambio_datos(self):
+        if self.actualizar_dashboard is not None:
+            self.actualizar_dashboard()
 
     def init_ui(self):
         # PANTALLA 1: Clientes
@@ -229,6 +234,7 @@ class PantallaClientes(QWidget):
             if exito:
                 mostrar_mensaje(self.ventana_principal, QMessageBox.Information, "Éxito", f"El cliente '{nombre_cliente}' fue eliminado correctamente.")
                 self.cargar_clientes()
+                self._notificar_cambio_datos()
             else:
                 mostrar_mensaje(self.ventana_principal, QMessageBox.Critical, "Error", "❌ No se pudo eliminar al cliente en la base de datos.")
 
@@ -322,6 +328,7 @@ class PantallaClientes(QWidget):
             mostrar_mensaje(dialogo, QMessageBox.Information, "Éxito", "Los datos del cliente se actualizaron correctamente.")
             dialogo.accept()  # Cierra la ventana
             self.cargar_clientes()  # Refresca la tabla automáticamente sin reiniciar la app
+            self._notificar_cambio_datos()
 
         # Conectamos el botón a su lógica interna
         btn_guardar.clicked.connect(procesar_edicion)
@@ -409,6 +416,7 @@ class PantallaClientes(QWidget):
             mostrar_mensaje(dialogo, QMessageBox.Information, "Éxito", "El cliente se guardó correctamente.")
             dialogo.accept()  # Cierra la ventana del formulario
             self.cargar_clientes()  # Refresca la tabla automáticamente sin reiniciar la app
+            self._notificar_cambio_datos()
 
         #Conectamos el botón de la ventana flotante a su lógica
         btn_guardar.clicked.connect(procesar_alta)

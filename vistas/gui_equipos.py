@@ -37,10 +37,15 @@ class PantallaEquipos(QWidget):
     Clase que representa la pantalla de Gestión de Equipos.
     Hereda de QWidget para funcionar como un contenedor visual independiente.
     """
-    def __init__(self, ventana_principal):
+    def __init__(self, ventana_principal, actualizar_dashboard=None):
         super().__init__()
         self.ventana_principal = ventana_principal  # Guardamos referencia para cuadros de diálogo
+        self.actualizar_dashboard = actualizar_dashboard
         self.init_ui()
+
+    def _notificar_cambio_datos(self):
+        if self.actualizar_dashboard is not None:
+            self.actualizar_dashboard()
 
     def init_ui(self):
         # PANTALLA 2: Equipos
@@ -360,6 +365,7 @@ class PantallaEquipos(QWidget):
             mostrar_mensaje(dialogo, QMessageBox.Information, "Éxito", "¡Equipo registrado correctamente!")
             dialogo.accept()
             self.cargar_equipos()  # Refresca automáticamente tu tabla de equipos
+            self._notificar_cambio_datos()
 
         btn_guardar.clicked.connect(procesar_alta_equipo)
         dialogo.exec()
@@ -376,6 +382,7 @@ class PantallaEquipos(QWidget):
             if exito:
                 mostrar_mensaje(self.ventana_principal, QMessageBox.Information, "Éxito", "El equipo fue eliminado correctamente.")
                 self.cargar_equipos() # Refresco automático
+                self._notificar_cambio_datos()
             else:
                 mostrar_mensaje(self.ventana_principal, QMessageBox.Critical, "Error", "❌ No se pudo eliminar el equipo.")
 
@@ -489,6 +496,7 @@ class PantallaEquipos(QWidget):
             mostrar_mensaje(dialogo, QMessageBox.Information, "Éxito", "Los especificaciones del equipo se actualizaron.")
             dialogo.accept()
             self.cargar_equipos()
+            self._notificar_cambio_datos()
 
         btn_guardar.clicked.connect(procesar_edicion_equipo)
         dialogo.exec()

@@ -16,10 +16,15 @@ from vistas.estilos import (
 
 
 class PantallaPrestaciones(QWidget):
-    def __init__(self, ventana_principal):
+    def __init__(self, ventana_principal, actualizar_dashboard=None):
         super().__init__()
         self.ventana_principal = ventana_principal
+        self.actualizar_dashboard = actualizar_dashboard
         self.init_ui()
+
+    def _notificar_cambio_datos(self):
+        if self.actualizar_dashboard is not None:
+            self.actualizar_dashboard()
 
     def init_ui(self):
         layout = QVBoxLayout(self)
@@ -164,6 +169,7 @@ class PantallaPrestaciones(QWidget):
                 "La prestación fue dada de baja.",
             )
             self.cargar_prestaciones()
+            self._notificar_cambio_datos()
         else:
             mostrar_mensaje(
                 self.ventana_principal,
@@ -237,6 +243,7 @@ class PantallaPrestaciones(QWidget):
             mostrar_mensaje(dialogo, QMessageBox.Information, "Éxito", "La prestación se guardó correctamente.")
             dialogo.accept()
             self.cargar_prestaciones()
+            self._notificar_cambio_datos()
 
         boton.clicked.connect(procesar_alta)
         dialogo.exec()
@@ -269,6 +276,7 @@ class PantallaPrestaciones(QWidget):
             mostrar_mensaje(dialogo, QMessageBox.Information, "Éxito", "Los datos de la prestación se actualizaron.")
             dialogo.accept()
             self.cargar_prestaciones()
+            self._notificar_cambio_datos()
 
         boton.clicked.connect(procesar_edicion)
         dialogo.exec()

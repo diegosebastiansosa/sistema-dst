@@ -320,11 +320,12 @@ def iniciar_interfaz():
     pag_bienvenida = PantallaDashboard()
 
     # Instanciamos nuestras nuevas pantallas modulares pasándoles la ventana principal
-    pag_clientes = PantallaClientes(ventana_principal)
-    pag_equipos = PantallaEquipos(ventana_principal)
-    pag_ordenes = PantallaOrdenes(ventana_principal)
-    pag_insumos = PantallaInsumos(ventana_principal)
-    pag_prestaciones = PantallaPrestaciones(ventana_principal)
+    actualizar_dashboard = pag_bienvenida.actualizar_metricas
+    pag_clientes = PantallaClientes(ventana_principal, actualizar_dashboard)
+    pag_equipos = PantallaEquipos(ventana_principal, actualizar_dashboard)
+    pag_ordenes = PantallaOrdenes(ventana_principal, actualizar_dashboard)
+    pag_insumos = PantallaInsumos(ventana_principal, actualizar_dashboard)
+    pag_prestaciones = PantallaPrestaciones(ventana_principal, actualizar_dashboard)
 
     # ========================================================
     #  APILAR LAS PANTALLAS EN EL MAZO

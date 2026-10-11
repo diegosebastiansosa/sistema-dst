@@ -1,7 +1,7 @@
-import re
 import sqlite3
 import os  # Para verificar si el archivo de la base de datos ya existe en el disco
 import sys
+import re  # Para validar el formato de correo electrónico
 
 # Determinamos la ruta de la base de datos según si estamos en modo desarrollo o en modo ejecutable (PyInstaller)
 if getattr(sys, 'frozen', False):
@@ -15,7 +15,7 @@ def obtener_estados_ordenes():
     # Trae el conteo de órdenes agrupadas por su estado actual
     estados = {
         "Recibido": 0,
-        "En Diagnóstico": 0,
+        "En diagnóstico": 0,
         "Esperando repuesto": 0,
         "Reparado": 0,
         "Entregado": 0
@@ -140,6 +140,8 @@ def inicializar_db():
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
             id_equipo   INTEGER NOT NULL,
             id_cliente  INTEGER NOT NULL,
+            presupuesto INTEGER,  -- Nueva columna
+            fecha       TEXT,     -- Nueva columna
             descripcion TEXT    NOT NULL,
             estado      TEXT    NOT NULL DEFAULT 'Recibido',
             FOREIGN KEY (id_equipo)  REFERENCES equipos(id),
@@ -147,10 +149,95 @@ def inicializar_db():
         )
     ''')
 
+    # Tabla de Insumos
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS insumos (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            descripcion TEXT    NOT NULL,
+            fecha       TEXT,
+            unidades    INTEGER NOT NULL,
+            costo       INTEGER NOT NULL,
+            activo      INTEGER NOT NULL DEFAULT 1
+        )
+    ''')
+
+    # Tabla de Prestaciones
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS prestaciones (
+            id        INTEGER PRIMARY KEY AUTOINCREMENT,
+            empresa   TEXT    NOT NULL,
+            fecha     TEXT,
+            equipo    TEXT    NOT NULL,
+            cliente   TEXT    NOT NULL,
+            ganancia  INTEGER NOT NULL,
+            activo    INTEGER NOT NULL DEFAULT 1
+        )
+    ''')
+
     # Guardamos los cambios y cerramos la conexión
     conexion.commit()
     conexion.close()
     print('Base de datos inicializada correctamente.')
+
+# --- ACTUALIZACIÓN DE LA BASE DE DATOS ---
+def actualizar_base_de_datos():
+    """Actualiza la base de datos preexistentes, añadiendo las columnas y tablas necesarias."""
+    conexion = conectar_db()
+    cursor = conexion.cursor()
+    try:
+        # Revisamos qué columnas tiene HOY la tabla 'ordenes'
+        cursor.execute("PRAGMA table_info(ordenes)")
+        columnas_ordenes = [fila[1] for fila in cursor.fetchall()]
+
+        if "presupuesto" not in columnas_ordenes:
+            cursor.execute("ALTER TABLE ordenes ADD COLUMN presupuesto INTEGER")
+
+        if "fecha" not in columnas_ordenes:
+            cursor.execute("ALTER TABLE ordenes ADD COLUMN fecha TEXT")
+
+        # CREATE TABLE IF NOT EXISTS ya es idempotente por sí solo
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS insumos (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                descripcion TEXT    NOT NULL,
+                fecha       TEXT,
+                unidades    INTEGER NOT NULL,
+                costo       INTEGER NOT NULL,
+                activo      INTEGER NOT NULL DEFAULT 1
+            )
+        ''')
+
+        cursor.execute("PRAGMA table_info(insumos)")
+        columnas_insumos = [fila[1] for fila in cursor.fetchall()]
+        if "fecha" not in columnas_insumos:
+            cursor.execute("ALTER TABLE insumos ADD COLUMN fecha TEXT")
+        if "activo" not in columnas_insumos:
+            cursor.execute("ALTER TABLE insumos ADD COLUMN activo INTEGER NOT NULL DEFAULT 1")
+
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS prestaciones (
+                id        INTEGER PRIMARY KEY AUTOINCREMENT,
+                empresa   TEXT    NOT NULL,
+                fecha     TEXT,
+                equipo    TEXT    NOT NULL,
+                cliente   TEXT    NOT NULL,
+                ganancia  INTEGER NOT NULL,
+                activo    INTEGER NOT NULL DEFAULT 1
+            )
+        ''')
+
+        cursor.execute("PRAGMA table_info(prestaciones)")
+        columnas_prestaciones = [fila[1] for fila in cursor.fetchall()]
+        if "activo" not in columnas_prestaciones:
+            cursor.execute("ALTER TABLE prestaciones ADD COLUMN activo INTEGER NOT NULL DEFAULT 1")
+
+        conexion.commit()
+        print("Base de datos actualizada correctamente.")
+    except Exception as e:
+        print(f"Error al actualizar la base de datos: {e}")
+    finally:
+        cursor.close()
+        conexion.close()
 
 # --- VALIDACIONES DE DATOS ---
 
@@ -200,7 +287,7 @@ def obtener_todas_las_ordenes():
                (e.tipo || ' ' || e.marca || ' ' || e.modelo || ' (' || e.procesador || ' | ' || e.ram || ' | Video: ' || 
                 CASE WHEN e.gpu_dedicada = 1 THEN e.marca_gpu || ' ' || e.modelo_gpu || ' ' || e.vram ELSE 'Intel/AMD o/b' END || 
                 ' | SSD: ' || e.almacenamiento_ssd || ')') AS equipo_completo, 
-               o.descripcion, o.estado
+               o.presupuesto, o.fecha, o.descripcion, o.estado
         FROM ordenes o
         INNER JOIN equipos e ON o.id_equipo = e.id
         INNER JOIN clientes c ON o.id_cliente = c.id

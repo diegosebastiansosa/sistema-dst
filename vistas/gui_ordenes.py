@@ -18,11 +18,13 @@
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QLabel, QTableWidget, 
                                 QTableWidgetItem, QHeaderView, QDialog,
                                 QComboBox, QLineEdit, QPushButton, QMessageBox,
-                                QHBoxLayout)
-from PySide6.QtCore import Qt
+                                QHBoxLayout, QCheckBox, QDateEdit, QSpinBox,
+                                QAbstractSpinBox)
+from PySide6.QtCore import Qt, QDate
 from qfluentwidgets import PushButton, PrimaryPushButton, SearchLineEdit, FluentIcon as FIF, setTheme, Theme
 import utilidades
 import ordenes  # Backend de órdenes: operaciones CRUD sobre la tabla 'ordenes' en dst.db
+from vistas.controles import agregar_selector_calendario
 from vistas.estilos import (
     COLOR_SIDEBAR, COLOR_FONDO_CONTENIDO, COLOR_ACENTO,
     COLOR_TEXTO_PRINCIPAL, COLOR_TEXTO_SECUNDARIO, ESTILO_FORMULARIO,
@@ -48,10 +50,13 @@ class PantallaOrdenes(QWidget):
         lbl_ordenes = QLabel("Gestión de Órdenes")
         lbl_ordenes.setStyleSheet(f"font-size: 24px; font-weight: bold; color: {COLOR_TEXTO_PRINCIPAL}; border: none;")
         
-        # Creamos la tabla de órdenes con 6 columnas descriptivas (agregando Acciones al final)
+        # Creamos la tabla de órdenes con sus datos de gestión y las acciones al final.
         self.tabla_ordenes_ui = QTableWidget()
-        self.tabla_ordenes_ui.setColumnCount(6)
-        self.tabla_ordenes_ui.setHorizontalHeaderLabels(["Nº Orden", "Cliente", "Equipo", "Estado", "Descripción / Problema", "Acciones"])
+        self.tabla_ordenes_ui.setColumnCount(8)
+        self.tabla_ordenes_ui.setHorizontalHeaderLabels([
+            "Nº Orden", "Cliente", "Equipo", "Estado", "Descripción / Problema",
+            "Fecha", "Presupuesto", "Acciones"
+        ])
         self.tabla_ordenes_ui.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         # ---- SOLUCIÓN DE COLOR DE TEXTO ----
         self.tabla_ordenes_ui.setAlternatingRowColors(True)
@@ -120,6 +125,10 @@ class PantallaOrdenes(QWidget):
                     self.tabla_ordenes_ui.setItem(fila_index, 2, QTableWidgetItem(reg['equipo_completo']))
                     self.tabla_ordenes_ui.setItem(fila_index, 3, QTableWidgetItem(reg['estado']))
                     self.tabla_ordenes_ui.setItem(fila_index, 4, QTableWidgetItem(reg['descripcion']))
+                    self.tabla_ordenes_ui.setItem(fila_index, 5, QTableWidgetItem(reg['fecha'] or "-"))
+                    presupuesto = reg['presupuesto']
+                    texto_presupuesto = f"$ {presupuesto}" if presupuesto is not None else "-"
+                    self.tabla_ordenes_ui.setItem(fila_index, 6, QTableWidgetItem(texto_presupuesto))
                     
                     # --- NCrear contenedor de acciones para la Columna 5 (Acciones) ---
                     # QWidget actúa como contenedor para que los dos botones compartan la misma celda de la tabla
@@ -172,8 +181,8 @@ class PantallaOrdenes(QWidget):
                     lay_acciones.addWidget(btn_editar_ord)
                     lay_acciones.addWidget(btn_cancelar_ord)
                     
-                    # Insertamos el contenedor directamente en la columna de Acciones (columna 6, índice 5)
-                    self.tabla_ordenes_ui.setCellWidget(fila_index, 5, widget_acciones)
+                    # Insertamos el contenedor directamente en la columna de Acciones (índice 7)
+                    self.tabla_ordenes_ui.setCellWidget(fila_index, 7, widget_acciones)
         except Exception as e:
             self.tabla_ordenes_ui.setRowCount(1)
             self.tabla_ordenes_ui.setItem(0, 0, QTableWidgetItem(f"❌ Error al cargar órdenes: {e}"))
@@ -236,7 +245,7 @@ class PantallaOrdenes(QWidget):
         # 3. Creación del diálogo (Ventana flotante modal)
         dialogo = QDialog(self.ventana_principal)
         dialogo.setWindowTitle("Nueva Orden de Reparación")
-        dialogo.resize(400, 350)
+        dialogo.resize(400, 450)
         dialogo.setStyleSheet(ESTILO_FORMULARIO)
         # coloreamos la barra de título nativa de este diálogo
         personalizar_barra_titulo(dialogo)
@@ -263,6 +272,31 @@ class PantallaOrdenes(QWidget):
         txt_descripcion = QLineEdit()
         txt_descripcion.setPlaceholderText("Ej: No enciende / Pantalla rota / Limpieza...")
         lay_dialogo.addWidget(txt_descripcion)
+
+        lay_dialogo.addWidget(QLabel("<b>Fecha:</b>"))
+        lay_fecha = QHBoxLayout()
+        fecha_orden = QDateEdit()
+        fecha_orden.setDisplayFormat("yyyy-MM-dd")
+        fecha_orden.setDate(QDate.currentDate())
+        lay_fecha.addWidget(fecha_orden)
+        boton_calendario = agregar_selector_calendario(lay_fecha, fecha_orden)
+        chk_sin_fecha = QCheckBox("Sin fecha")
+        chk_sin_fecha.toggled.connect(fecha_orden.setDisabled)
+        chk_sin_fecha.toggled.connect(boton_calendario.setDisabled)
+        lay_fecha.addWidget(chk_sin_fecha)
+        lay_dialogo.addLayout(lay_fecha)
+
+        lay_dialogo.addWidget(QLabel("<b>Presupuesto:</b>"))
+        lay_presupuesto = QHBoxLayout()
+        presupuesto_orden = QSpinBox()
+        presupuesto_orden.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
+        presupuesto_orden.setRange(0, 2147483647)
+        presupuesto_orden.setPrefix("$ ")
+        chk_sin_presupuesto = QCheckBox("Sin presupuesto")
+        chk_sin_presupuesto.toggled.connect(presupuesto_orden.setDisabled)
+        lay_presupuesto.addWidget(presupuesto_orden)
+        lay_presupuesto.addWidget(chk_sin_presupuesto)
+        lay_dialogo.addLayout(lay_presupuesto)
         
         # 6. Botón para guardar la orden
         btn_guardar = PushButton("Guardar Orden de Reparación")
@@ -277,12 +311,16 @@ class PantallaOrdenes(QWidget):
 
             # Obtenemos el texto ingresado en el campo de descripción y quitamos espacios sobrantes
             descripcion = txt_descripcion.text().strip()
+            fecha = None if chk_sin_fecha.isChecked() else fecha_orden.date().toString("yyyy-MM-dd")
+            presupuesto = None if chk_sin_presupuesto.isChecked() else presupuesto_orden.value()
 
             # VALIDACIÓN Y PERSISTENCIA: le delegamos todo a ordenes.py
             exito, tipo_error, titulo_error, mensaje_error = ordenes.alta_orden_validada(
                 id_equipo=equipo_seleccionado['id'],
                 id_cliente=equipo_seleccionado['id_cliente'],
-                descripcion=descripcion
+                descripcion=descripcion,
+                fecha=fecha,
+                presupuesto=presupuesto
             )
 
             if not exito:
@@ -303,12 +341,11 @@ class PantallaOrdenes(QWidget):
         dialogo.exec()
 
     def abrir_formulario_edicion_orden(self, orden_data):
-        # Abre una ventana flotante (QDialog) que permite al usuario modificar únicamente el estado de la orden seleccionada,
-        # seleccionando entre los estados fijos definidos en ordenes.py.
+        # Abre una ventana flotante para modificar el estado, la fecha y el presupuesto.
         # Creamos la ventana de diálogo modal
         dialogo = QDialog(self.ventana_principal)
-        dialogo.setWindowTitle(f"Editar Estado - Orden Nº {orden_data['id']}")
-        dialogo.resize(350, 180)
+        dialogo.setWindowTitle(f"Editar Orden Nº {orden_data['id']}")
+        dialogo.resize(400, 400)
         dialogo.setStyleSheet(ESTILO_FORMULARIO)
         # coloreamos la barra de título nativa de este diálogo
         personalizar_barra_titulo(dialogo)
@@ -318,6 +355,37 @@ class PantallaOrdenes(QWidget):
         lbl_info = QLabel(f"<b>Cliente:</b> {orden_data['cliente_nombre']}<br><b>Equipo:</b> {orden_data['equipo_completo']}")
         lbl_info.setWordWrap(True) # Para que el texto se ajuste al ancho
         lay_dialogo.addWidget(lbl_info)
+
+        lay_dialogo.addWidget(QLabel("<b>Fecha:</b>"))
+        lay_fecha = QHBoxLayout()
+        fecha_orden = QDateEdit()
+        fecha_orden.setDisplayFormat("yyyy-MM-dd")
+        fecha_actual = orden_data['fecha']
+        fecha_parseada = QDate.fromString(str(fecha_actual), "yyyy-MM-dd") if fecha_actual else QDate()
+        fecha_orden.setDate(fecha_parseada if fecha_parseada.isValid() else QDate.currentDate())
+        lay_fecha.addWidget(fecha_orden)
+        boton_calendario = agregar_selector_calendario(lay_fecha, fecha_orden)
+        chk_sin_fecha = QCheckBox("Sin fecha")
+        chk_sin_fecha.setChecked(not fecha_parseada.isValid())
+        chk_sin_fecha.toggled.connect(fecha_orden.setDisabled)
+        chk_sin_fecha.toggled.connect(boton_calendario.setDisabled)
+        lay_fecha.addWidget(chk_sin_fecha)
+        lay_dialogo.addLayout(lay_fecha)
+
+        lay_dialogo.addWidget(QLabel("<b>Presupuesto:</b>"))
+        lay_presupuesto = QHBoxLayout()
+        presupuesto_orden = QSpinBox()
+        presupuesto_orden.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
+        presupuesto_orden.setRange(0, 2147483647)
+        presupuesto_orden.setPrefix("$ ")
+        presupuesto_actual = orden_data['presupuesto']
+        presupuesto_orden.setValue(presupuesto_actual if presupuesto_actual is not None else 0)
+        chk_sin_presupuesto = QCheckBox("Sin presupuesto")
+        chk_sin_presupuesto.setChecked(presupuesto_actual is None)
+        chk_sin_presupuesto.toggled.connect(presupuesto_orden.setDisabled)
+        lay_presupuesto.addWidget(presupuesto_orden)
+        lay_presupuesto.addWidget(chk_sin_presupuesto)
+        lay_dialogo.addLayout(lay_presupuesto)
         
         # Selector de estados (QComboBox)
         lay_dialogo.addWidget(QLabel("<b>Nuevo Estado de la Orden:</b>"))
@@ -342,15 +410,20 @@ class PantallaOrdenes(QWidget):
         # Función interna para procesar la edición del estado al hacer clic en el botón
         def procesar_edicion_estado():
             nuevo_estado = combo_estados.currentText()
+            nueva_fecha = None if chk_sin_fecha.isChecked() else fecha_orden.date().toString("yyyy-MM-dd")
+            nuevo_presupuesto = None if chk_sin_presupuesto.isChecked() else presupuesto_orden.value()
 
-            # no llamar a la base de datos si no cambió nada
-            if nuevo_estado == estado_actual:
+            if (
+                nuevo_estado == estado_actual
+                and nueva_fecha == orden_data['fecha']
+                and nuevo_presupuesto == orden_data['presupuesto']
+            ):
                 dialogo.accept()
                 return
 
             # Delegamos la persistencia y la interpretación del resultado al backend
             exito, tipo_error, titulo_error, mensaje_error = ordenes.cambiar_estado_orden_validado(
-                orden_data['id'], nuevo_estado
+                orden_data['id'], nuevo_estado, nueva_fecha, nuevo_presupuesto
             )
 
             if not exito:
@@ -360,7 +433,7 @@ class PantallaOrdenes(QWidget):
                     mostrar_mensaje(dialogo, QMessageBox.Warning, titulo_error, mensaje_error)
                 return
 
-            mostrar_mensaje(dialogo, QMessageBox.Information, "Éxito", "¡El estado de la orden se actualizó correctamente!")
+            mostrar_mensaje(dialogo, QMessageBox.Information, "Éxito", "¡Los datos de la orden se actualizaron correctamente!")
             dialogo.accept()
             self.cargar_ordenes()
                 

@@ -16,7 +16,7 @@ ESTILO_FORMULARIO = f"""
     QLabel {{
         color: {COLOR_TEXTO_PRINCIPAL};
     }}
-    QLineEdit, QComboBox {{
+    QLineEdit, QComboBox, QDateEdit, QSpinBox {{
         background-color: #FFFFFF;
         color: {COLOR_TEXTO_PRINCIPAL};
         border: 1px solid #D8DAE5;
@@ -26,6 +26,10 @@ ESTILO_FORMULARIO = f"""
     QLineEdit:disabled {{
         background-color: #E5E7EB;
         color: {COLOR_TEXTO_SECUNDARIO};
+    }}
+    QDateEdit:disabled, QSpinBox:disabled {{
+        background-color: #E5E7EB;
+        color: {COLOR_TEXTO_PRINCIPAL};
     }}
     
     /* 1. Corrección del color de los nombres en la lista desplegable */

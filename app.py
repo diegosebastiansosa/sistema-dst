@@ -26,7 +26,9 @@ if raiz_proyecto not in sys.path:
 
 from vistas.gui_clientes import PantallaClientes
 from vistas.gui_equipos import PantallaEquipos
+from vistas.gui_insumos import PantallaInsumos
 from vistas.gui_ordenes import PantallaOrdenes
+from vistas.gui_prestaciones import PantallaPrestaciones
 from vistas.dashboard import PantallaDashboard  # Nueva pantalla de bienvenida encapsulada
 from vistas.estilos import (
     COLOR_SIDEBAR, COLOR_FONDO_CONTENIDO, COLOR_ACENTO,
@@ -187,7 +189,9 @@ def iniciar_interfaz():
     """)
     accion_cliente = menu_desplegable.addAction("Cliente")
     accion_equipo = menu_desplegable.addAction("Equipo")
+    accion_insumo = menu_desplegable.addAction("Insumo")
     accion_orden = menu_desplegable.addAction("Orden de reparación")
+    accion_prestacion = menu_desplegable.addAction("Prestación")
     
     # 2. AGREGAMOS: Función para forzar el despliegue hacia arriba
     def mostrar_menu_arriba():
@@ -220,7 +224,9 @@ def iniciar_interfaz():
     btn_dashboard = crear_boton_navegacion(FIF.TILES, "Dashboard")
     btn_clientes = crear_boton_navegacion(FIF.PEOPLE, "Clientes")
     btn_equipos = crear_boton_navegacion(FIF.DEVELOPER_TOOLS, "Equipos")
+    btn_insumos = crear_boton_navegacion(FIF.SHOPPING_CART, "Insumos")
     btn_ordenes = crear_boton_navegacion(FIF.SETTING, "Órdenes")
+    btn_prestaciones = crear_boton_navegacion(FIF.CALENDAR, "Prestaciones")
 
     # =========================================================================
     # ESTILO Y COMPORTAMIENTO "PESTAÑA ACTIVA"
@@ -259,7 +265,7 @@ def iniciar_interfaz():
     # Con QPushButton estándar, el padding ya no necesita un número gigante
     # como 40px: Qt reserva el espacio del ícono automáticamente y agrega el
     # texto después, así que un padding normal alcanza.
-    for boton in (btn_clientes, btn_equipos, btn_ordenes, btn_dashboard):
+    for boton in (btn_clientes, btn_equipos, btn_insumos, btn_ordenes, btn_prestaciones, btn_dashboard):
         boton.setCheckable(True)  # Habilita el estado "presionado persistente"
         boton.setStyleSheet(estilo_botones_nav)
 
@@ -270,13 +276,17 @@ def iniciar_interfaz():
     grupo_navegacion.addButton(btn_dashboard)
     grupo_navegacion.addButton(btn_clientes)
     grupo_navegacion.addButton(btn_equipos)
+    grupo_navegacion.addButton(btn_insumos)
     grupo_navegacion.addButton(btn_ordenes)
+    grupo_navegacion.addButton(btn_prestaciones)
 
     # Los agregamos al organizador vertical del menú.
     layout_menu.addWidget(btn_dashboard)
     layout_menu.addWidget(btn_clientes)
     layout_menu.addWidget(btn_equipos)
+    layout_menu.addWidget(btn_insumos)
     layout_menu.addWidget(btn_ordenes)
+    layout_menu.addWidget(btn_prestaciones)
     
     # Este truco ("addStretch") empuja los botones hacia arriba para que no se estiren feo
     layout_menu.addStretch()
@@ -313,6 +323,8 @@ def iniciar_interfaz():
     pag_clientes = PantallaClientes(ventana_principal)
     pag_equipos = PantallaEquipos(ventana_principal)
     pag_ordenes = PantallaOrdenes(ventana_principal)
+    pag_insumos = PantallaInsumos(ventana_principal)
+    pag_prestaciones = PantallaPrestaciones(ventana_principal)
 
     # ========================================================
     #  APILAR LAS PANTALLAS EN EL MAZO
@@ -322,6 +334,8 @@ def iniciar_interfaz():
     pantallas_reemplazables.addWidget(pag_clientes)   # Índice 1
     pantallas_reemplazables.addWidget(pag_equipos)    # Índice 2
     pantallas_reemplazables.addWidget(pag_ordenes)    # Índice 3
+    pantallas_reemplazables.addWidget(pag_insumos)    # Índice 4
+    pantallas_reemplazables.addWidget(pag_prestaciones) # Índice 5
 
     # ========================================================
     # 3. FUNCIONES PARA LEER LA BASE DE DATOS EN TIEMPO REAL
@@ -345,6 +359,16 @@ def iniciar_interfaz():
         pantallas_reemplazables.setCurrentIndex(3)
         btn_ordenes.setChecked(True)
 
+    def cargar_insumos():
+        pag_insumos.cargar_insumos()
+        pantallas_reemplazables.setCurrentIndex(4)
+        btn_insumos.setChecked(True)
+
+    def cargar_prestaciones():
+        pag_prestaciones.cargar_prestaciones()
+        pantallas_reemplazables.setCurrentIndex(5)
+        btn_prestaciones.setChecked(True)
+
     # ========================================================
     # 4. CONECTAR LOS BOTONES A LAS NUEVAS FUNCIONES
     # ========================================================
@@ -360,11 +384,15 @@ def iniciar_interfaz():
     # Primero llamamos a la función que lee la BD y esa función se encarga de cambiar de pantalla.
     btn_clientes.clicked.connect(cargar_clientes)
     btn_equipos.clicked.connect(cargar_equipos)
+    btn_insumos.clicked.connect(cargar_insumos)
     btn_ordenes.clicked.connect(cargar_ordenes)
+    btn_prestaciones.clicked.connect(cargar_prestaciones)
     
     accion_cliente.triggered.connect(pag_clientes.abrir_formulario_cliente)
     accion_equipo.triggered.connect(pag_equipos.abrir_formulario_equipo)
+    accion_insumo.triggered.connect(pag_insumos.abrir_formulario_insumo)
     accion_orden.triggered.connect(pag_ordenes.abrir_formulario_orden)
+    accion_prestacion.triggered.connect(pag_prestaciones.abrir_formulario_prestacion)
 
     # ========================================================
     # 5. UNIÓN FINAL EN LA VENTANA
@@ -383,7 +411,10 @@ def iniciar_interfaz():
 
 
 if __name__ == "__main__":
+
     # Verificamos si la base de datos existe y creamos las tablas si es necesario
     # ANTES de lanzar la interfaz gráfica, para que todo esté listo desde el primer uso.
     utilidades.inicializar_db()
+    # Llama a la función para actualizar la base de datos
+    utilidades.actualizar_base_de_datos()
     iniciar_interfaz()

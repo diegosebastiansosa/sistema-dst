@@ -8,6 +8,38 @@ COLOR_TEXTO_ACTIVO = "#FFFFFF"     # Texto blanco para el ítem activo del menú
 COLOR_TEXTO_PRINCIPAL = "#1B2A4A"  # Texto oscuro (mismo tono que el sidebar, para coherencia visual)
 COLOR_TEXTO_SECUNDARIO = "#6B7280" # Gris medio para subtítulos y textos de apoyo
 
+ESTILO_BARRA_VERTICAL = f"""
+    QScrollBar:vertical {{
+        background: transparent;
+        border: none;
+        width: 10px;
+        margin: 0;
+    }}
+    QScrollBar::handle:vertical {{
+        background: #C4CBD6;
+        border: none;
+        border-radius: 5px;
+        min-height: 28px;
+        margin: 2px;
+    }}
+    QScrollBar::handle:vertical:hover {{
+        background: {COLOR_ACENTO};
+    }}
+    QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+        height: 0;
+        border: none;
+        background: none;
+    }}
+    QScrollBar::up-arrow:vertical, QScrollBar::down-arrow:vertical {{
+        width: 0;
+        height: 0;
+        image: none;
+    }}
+    QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {{
+        background: transparent;
+    }}
+"""
+
 # Estilo global reutilizable para todos los cuadros de diálogo (QDialog)
 ESTILO_FORMULARIO = f"""
     QDialog {{

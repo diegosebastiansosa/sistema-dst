@@ -10,7 +10,7 @@ import insumos
 from vistas.controles import agregar_selector_calendario
 from vistas.estilos import (
     COLOR_SIDEBAR, COLOR_FONDO_CONTENIDO, COLOR_ACENTO,
-    COLOR_TEXTO_PRINCIPAL, ESTILO_FORMULARIO,
+    COLOR_TEXTO_PRINCIPAL, ESTILO_FORMULARIO, ESTILO_BARRA_VERTICAL,
     personalizar_barra_titulo, mostrar_mensaje,
 )
 
@@ -68,6 +68,7 @@ class PantallaInsumos(QWidget):
                 font-weight: bold;
             }}
         """)
+        self.tabla_insumos.verticalScrollBar().setStyleSheet(ESTILO_BARRA_VERTICAL)
         layout.addWidget(self.tabla_insumos)
 
         self.txt_buscar = SearchLineEdit()

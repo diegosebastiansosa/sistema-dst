@@ -29,6 +29,7 @@ import equipos  # Backend de equipos: operaciones CRUD sobre la tabla 'equipos' 
 from vistas.estilos import (
     COLOR_SIDEBAR, COLOR_FONDO_CONTENIDO, COLOR_ACENTO,
     COLOR_TEXTO_PRINCIPAL, COLOR_TEXTO_SECUNDARIO, ESTILO_FORMULARIO,
+    ESTILO_BARRA_VERTICAL,
     personalizar_barra_titulo, mostrar_mensaje
 )
 
@@ -95,6 +96,7 @@ class PantallaEquipos(QWidget):
                 font-weight: bold;
             }}
         """)
+        self.tabla_equipos_ui.verticalScrollBar().setStyleSheet(ESTILO_BARRA_VERTICAL)
 
         lay_equipos.addWidget(self.tabla_equipos_ui)
 
